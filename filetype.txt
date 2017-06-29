@@ -1,0 +1,15 @@
+png
+jpg
+inc
+php
+js
+cnf
+ini
+json
+html
+txt
+json
+yaml
+php
+inc
+php5
