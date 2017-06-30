@@ -9,19 +9,24 @@ from util import HTTP_METHODS
 FOLLOW_REDIRECTS = False
 MAX_DEPTH = 3
 
+class Wordlist(object):
 
-class Durrduster(object):
-
-    def __init__(self, domain, protocol="https"):
-
-        self.domain = domain
-        self.protocol = protocol
+    def __init__(self):
 
         self.wordlist = {
             "path": [],
             "filename": [],
             "extension": [],
         }
+
+    def path(self):
+        return self.wordlist["path"]
+
+    def filename(self):
+        return self.wordlist["filename"]
+
+    def extension(self):
+        return self.wordlist["extension"]
 
     def add_wordlist(self, list_type, filename):
         if list_type not in self.wordlist.keys():
@@ -33,6 +38,19 @@ class Durrduster(object):
             self.wordlist[list_type] += [ i.strip() for i in wordlist_f.read().split("\n") if i ]
             self.wordlist[list_type] = list(set(self.wordlist[list_type]))
             print(self.wordlist)
+
+    def permute_filenames(self):
+        return [ "%s.%s" % (pre, post) for pre in self.wordlist["filename"] \
+                 for post in self.wordlist["extension"] ]
+
+class Durrduster(object):
+
+    def __init__(self, domain, method, protocol="https"):
+
+        self.domain = domain
+        self.method = method
+        self.protocol = protocol
+        self.wordlist = Wordlist()
 
     def brute_section(self, brute_iterator, method, follow_redirects, prefix=None):
         # Brute_iterator could be a list of paths, filenames, mutated paths
@@ -64,11 +82,10 @@ class Durrduster(object):
 
     def brute(self, follow_redirects, max_depth, method="GET"):
 
-        complete_filelist = [ "%s.%s" % (pre, post) for pre in self.wordlist["filename"] \
-                              for post in self.wordlist["extension"] ]
+        complete_filelist = self.wordlist.permute_filenames()
 
         dir_list = self.brute_dirs(
-            self.wordlist["path"] + ["/"], method, follow_redirects)
+            self.wordlist.path() + ["/"], method, follow_redirects)
         depth = 1
         found_dirs = copy.copy(dir_list)
 
@@ -76,7 +93,8 @@ class Durrduster(object):
             for prefix_dir in dir_list:
                 print("Attempting %s" %  prefix_dir)
                 dir_list = self.brute_dirs(
-                    self.wordlist["path"], method, follow_redirects, prefix=prefix_dir)
+                    self.wordlist.path(), method, follow_redirects, prefix=prefix_dir
+                )
                 found_dirs += dir_list
             depth +=1
         found_dirs = list(set(found_dirs))
@@ -84,7 +102,6 @@ class Durrduster(object):
         print("Finished scanning directories. Dirlist is %s" % str(found_dirs))
 
         for found_dir in found_dirs:
-
             self.brute_section(complete_filelist, method, follow_redirects, prefix=found_dir)
 
 
@@ -106,10 +123,10 @@ class Durrduster(object):
 
 def main():
 
-    d = Durrduster("nosmo.me")
-    d.add_wordlist("path", "path.txt")
-    d.add_wordlist("extension", "filetype.txt")
-    d.add_wordlist("filename", "filename.txt")
+    d = Durrduster("nosmo.me", method="GET")
+    d.wordlist.add_wordlist("path", "path.txt")
+    d.wordlist.add_wordlist("extension", "filetype.txt")
+    d.wordlist.add_wordlist("filename", "filename.txt")
 
     d.brute(FOLLOW_REDIRECTS, max_depth=MAX_DEPTH)
     #d.get_results()
