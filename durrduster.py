@@ -1,34 +1,13 @@
 #!/usr/bin/env python3
 
-import itertools
+import copy
 
 import requests
 
+from util import HTTP_METHODS
+
 FOLLOW_REDIRECTS = False
-
-HTTP_METHODS = {
-    "GET": requests.get,
-    "POST": requests.post,
-    "HEAD": requests.head
-}
-
-
-class BruteResults(dict):
-
-    def __init__(self):
-        pass
-
-    def __setattr__(self, other_url, other):
-        self.__dict__[other_url] = other
-        print("added %s" % other_url)
-
-    def add_result(self, requests_obj):
-        self.__dict__[requests_obj.url] = requests_obj
-        return requests_obj.ok
-
-    def __iter__(self):
-        for (key, val) in self.__dict__.iteritems():
-            yield (key, val)
+MAX_DEPTH = 3
 
 
 class Durrduster(object):
@@ -37,10 +16,9 @@ class Durrduster(object):
 
         self.domain = domain
         self.protocol = protocol
-        self.results = BruteResults()
 
         self.wordlist = {
-            "path": ["/"],
+            "path": [],
             "filename": [],
             "extension": [],
         }
@@ -56,25 +34,58 @@ class Durrduster(object):
             self.wordlist[list_type] = list(set(self.wordlist[list_type]))
             print(self.wordlist)
 
-    def brute_section(self, brute_iterator, method, follow_redirects):
+    def brute_section(self, brute_iterator, method, follow_redirects, prefix=None):
         # Brute_iterator could be a list of paths, filenames, mutated paths
         for component in brute_iterator:
-            request_obj = self.check(component, method, follow_redirects)
-            result = self.results.add_result(request_obj)
-            if result:
+            request_path = component
+            if prefix and prefix != "/":
+                request_path = "%s/%s" % (prefix, component)
+
+            print("request path is %s" % request_path)
+            request_obj = self.check(request_path, method, follow_redirects)
+            if request_obj.ok:
                 print("Hit for %s" % request_obj.url)
                 print(request_obj.status_code)
 
-    def brute(self, follow_redirects, method="GET"):
-        # lol, overthinking it
-        #complete_filelist = [ list(zip(self.wordlist["filename"], i)) \
-        #                      for i in itertools.permutations(self.wordlist["extension"]) ]
+    def brute_dirs(self, dirlist, method, follow_redirects, prefix=None):
+        dir_hits = []
+        for check_dir in dirlist:
+            check_path = check_dir
+            if prefix and prefix != "/":
+                check_path = "/".join([prefix, check_dir])
+
+            request_obj = self.check(check_path, method, follow_redirects)
+            if request_obj.ok:
+                print("Hit for %s" % request_obj.url)
+                print(request_obj.status_code)
+                dir_hits.append(check_path)
+        return dir_hits
+
+
+    def brute(self, follow_redirects, max_depth, method="GET"):
+
         complete_filelist = [ "%s.%s" % (pre, post) for pre in self.wordlist["filename"] \
                               for post in self.wordlist["extension"] ]
-        print(complete_filelist)
 
-        self.brute_section(self.wordlist["path"], method, follow_redirects)
-        self.brute_section(complete_filelist, method, follow_redirects)
+        dir_list = self.brute_dirs(
+            self.wordlist["path"] + ["/"], method, follow_redirects)
+        depth = 1
+        found_dirs = copy.copy(dir_list)
+
+        while dir_list and depth != max_depth:
+            for prefix_dir in dir_list:
+                print("Attempting %s" %  prefix_dir)
+                dir_list = self.brute_dirs(
+                    self.wordlist["path"], method, follow_redirects, prefix=prefix_dir)
+                found_dirs += dir_list
+            depth +=1
+        found_dirs = list(set(found_dirs))
+
+        print("Finished scanning directories. Dirlist is %s" % str(found_dirs))
+
+        for found_dir in found_dirs:
+
+            self.brute_section(complete_filelist, method, follow_redirects, prefix=found_dir)
 
 
     def check(self, component, method, follow_redirects=False):
@@ -91,19 +102,16 @@ class Durrduster(object):
         return get_result
 
     def get_results(self, output_format="human"):
-
-        for result in self.results:
-            if result.ok:
-                print(result.url)
+        raise NotImplemented
 
 def main():
-    wordlists = ["test.txt"]
+
     d = Durrduster("nosmo.me")
-    d.add_wordlist("path", "test.txt")
+    d.add_wordlist("path", "path.txt")
     d.add_wordlist("extension", "filetype.txt")
     d.add_wordlist("filename", "filename.txt")
 
-    d.brute(FOLLOW_REDIRECTS)
+    d.brute(FOLLOW_REDIRECTS, max_depth=MAX_DEPTH)
     #d.get_results()
 
 if __name__ == "__main__":
