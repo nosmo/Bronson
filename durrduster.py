@@ -6,11 +6,15 @@ import random
 import requests
 import yaml
 
-from util import HTTP_METHODS
+from util import HTTP_METHODS, make_session_methods
 
 FOLLOW_REDIRECTS = False
 MAX_DEPTH = 3
 DEFAULT_USER_AGENT = "Mozilla/5.0 (Macintosh; MacOS 7.5.1) You should probably block this UA"
+
+# Session makes use of auth (etc) easier, but also makes detection
+# easier if cookies are set
+USE_SESSION = True
 
 CONFIG_DICT = {
     "domain": "nosmo.me",
@@ -65,6 +69,12 @@ class Durrduster(object):
         self.protocol = protocol
         self.wordlist = Wordlist()
         self.user_agents = []
+
+        if USE_SESSION:
+            self.session = requests.Session()
+            self.methods = make_session_methods(self.session)
+        else:
+            self.methods = HTTP_METHODS
 
     def add_user_agent(self, useragent_path):
         """add a file full of user agents to use
@@ -141,7 +151,7 @@ class Durrduster(object):
         ua_header = {"User-Agent": user_agent}
         headers.update(ua_header)
 
-        get_result = HTTP_METHODS[method](
+        get_result = self.methods[method](
             "{protocol}://{domain}/{component}".format(
                 protocol=self.protocol,
                 domain=self.domain,

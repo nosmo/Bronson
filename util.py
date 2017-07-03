@@ -7,3 +7,10 @@ HTTP_METHODS = {
     "POST": requests.post,
     "HEAD": requests.head
 }
+
+def make_session_methods(session_obj):
+    return {
+        "GET": session_obj.get,
+        "POST": session_obj.post,
+        "HEAD": session_obj.head
+    }
