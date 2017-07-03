@@ -1,13 +1,26 @@
 #!/usr/bin/env python3
 
 import copy
+import random
 
 import requests
+import yaml
 
 from util import HTTP_METHODS
 
 FOLLOW_REDIRECTS = False
 MAX_DEPTH = 3
+DEFAULT_USER_AGENT = "Mozilla/5.0 (Macintosh; MacOS 7.5.1) You should probably block this UA"
+
+CONFIG_DICT = {
+    "domain": "nosmo.me",
+    "wordlists": {
+        "path": ["path.txt"],
+        "extension": ["filetype.txt"],
+        "filename": ["filename.txt"]
+    },
+    "user_agents": ["useragents.txt"],
+}
 
 class Wordlist(object):
 
@@ -51,6 +64,19 @@ class Durrduster(object):
         self.method = method
         self.protocol = protocol
         self.wordlist = Wordlist()
+        self.user_agents = []
+
+    def add_user_agent(self, useragent_path):
+        """add a file full of user agents to use
+
+         The loading of more than one user agent implies the use of
+        random user agents.
+        """
+
+        with open(useragent_path) as wordlist_f:
+            for useragent in wordlist_f.read().split("\n"):
+                if useragent:
+                    self.user_agents.append(useragent)
 
     def brute_section(self, brute_iterator, method, follow_redirects, prefix=None):
         # Brute_iterator could be a list of paths, filenames, mutated paths
@@ -107,12 +133,21 @@ class Durrduster(object):
 
     def check(self, component, method, follow_redirects=False):
         #TODO don't follow redirects
+
+        headers = requests.utils.default_headers()
+        user_agent = random.choice(self.user_agents if self.user_agents else [DEFAULT_USER_AGENT])
+        print("User agent is %s" % user_agent)
+
+        ua_header = {"User-Agent": user_agent}
+        headers.update(ua_header)
+
         get_result = HTTP_METHODS[method](
             "{protocol}://{domain}/{component}".format(
                 protocol=self.protocol,
                 domain=self.domain,
-                component=component
+                component=component,
             ),
+            headers=headers,
             allow_redirects=follow_redirects
         )
 
@@ -121,15 +156,18 @@ class Durrduster(object):
     def get_results(self, output_format="human"):
         raise NotImplemented
 
-def main():
+def main(config):
 
-    d = Durrduster("nosmo.me", method="GET")
-    d.wordlist.add_wordlist("path", "path.txt")
-    d.wordlist.add_wordlist("extension", "filetype.txt")
-    d.wordlist.add_wordlist("filename", "filename.txt")
+    d = Durrduster(config["domain"], method="GET")
+    for wordlist_type, wordlist_list in config["wordlists"].items():
+        for wordlist_f in wordlist_list:
+            d.wordlist.add_wordlist(wordlist_type, wordlist_f)
+
+    for useragent_f in config["user_agents"]:
+        d.add_user_agent(useragent_f)
 
     d.brute(FOLLOW_REDIRECTS, max_depth=MAX_DEPTH)
     #d.get_results()
 
 if __name__ == "__main__":
-    main()
+    main(CONFIG_DICT)
