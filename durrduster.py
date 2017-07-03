@@ -7,6 +7,7 @@ import requests
 import yaml
 
 from util import HTTP_METHODS, make_session_methods
+from wordlist import Wordlist
 
 FOLLOW_REDIRECTS = False
 MAX_DEPTH = 3
@@ -26,39 +27,6 @@ CONFIG_DICT = {
     "user_agents": ["useragents.txt"],
 }
 
-class Wordlist(object):
-
-    def __init__(self):
-
-        self.wordlist = {
-            "path": [],
-            "filename": [],
-            "extension": [],
-        }
-
-    def path(self):
-        return self.wordlist["path"]
-
-    def filename(self):
-        return self.wordlist["filename"]
-
-    def extension(self):
-        return self.wordlist["extension"]
-
-    def add_wordlist(self, list_type, filename):
-        if list_type not in self.wordlist.keys():
-            raise IndexError("%s is not a valid wordlist type - valid types are %s" % (
-                list_type,
-                self.wordlist.keys()))
-
-        with open(filename) as wordlist_f:
-            self.wordlist[list_type] += [ i.strip() for i in wordlist_f.read().split("\n") if i ]
-            self.wordlist[list_type] = list(set(self.wordlist[list_type]))
-            print(self.wordlist)
-
-    def permute_filenames(self):
-        return [ "%s.%s" % (pre, post) for pre in self.wordlist["filename"] \
-                 for post in self.wordlist["extension"] ]
 
 class Durrduster(object):
 
