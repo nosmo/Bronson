@@ -10,6 +10,7 @@ from requests_futures.sessions import FuturesSession
 import requests
 import yaml
 
+from const import OUTPUT_TYPES
 from util import HTTP_METHODS, make_session_methods
 from wordlist import Wordlist
 
@@ -21,6 +22,9 @@ MAX_CONCURRENT = 10
 # Session makes use of auth (etc) easier, but also makes detection
 # easier if cookies are set
 USE_SESSION = True
+
+# TODO move this to a custom logger
+DEBUG = False
 
 
 class Bronson(object):
@@ -40,6 +44,8 @@ class Bronson(object):
         else:
             self.methods = HTTP_METHODS
 
+        self.results = []
+
     def add_user_agent(self, useragent_path):
         """add a file full of user agents to use
 
@@ -49,6 +55,7 @@ class Bronson(object):
 
         with open(useragent_path) as wordlist_f:
             for useragent in wordlist_f.read().split("\n"):
+                useragent = useragent.strip()
                 if useragent:
                     self.user_agents.append(useragent)
 
@@ -62,7 +69,10 @@ class Bronson(object):
         for component in brute_iterator:
             request_path = component
             if prefix and prefix != "/":
-                request_path = "%s/%s" % (prefix, component)
+                format_string = "%s%s"
+                if prefix.startswith("/"):
+                    format_string = "%s/%s"
+                request_path = format_string % (prefix, component)
 
             future_obj = self.check(request_path, method, follow_redirects)
             brute_futures.append(future_obj)
@@ -73,7 +83,10 @@ class Bronson(object):
         for check_dir in dirlist:
             check_path = check_dir
             if prefix and prefix != "/":
-                check_path = "/".join([prefix, check_dir])
+                format_string = "%s%s"
+                if prefix.startswith("/"):
+                    format_string = "%s/%s"
+                check_path = format_string % (prefix, component)
 
             request_obj = self.check(check_path, method, follow_redirects)
             dir_futures.append(request_obj)
@@ -106,20 +119,20 @@ class Bronson(object):
         complete_filelist = self.wordlist.permute_filenames()
 
         dir_futures = self.brute_dirs(
-            self.wordlist.path() + ["/"], method, follow_redirects
+            self.wordlist.path() + [""], method, follow_redirects
         )
 
         dir_list = []
         for dir_future in dir_futures:
             dir_request = dir_future.result()
             if dir_request.ok:
-                print("Hit for %s" % dir_request.url)
+                if DEBUG:
+                    print("Dir Hit for %s" % dir_request.url)
                 path = dir_request.url.partition(self.domain)[2]
                 dir_list.append(path)
 
         depth = 1
         found_dirs = copy.copy(dir_list)
-
 
         dir_list = []
         while dir_list and depth != max_depth:
@@ -130,30 +143,41 @@ class Bronson(object):
                 dir_request = dir_future.result()
                 if dir_request.ok:
                     path = dir_request.url.partition(self.domain)[2]
-                    print("Hit for %s" % dir_request.url)
+                    if DEBUG:
+                        print("List Hit for %s" % dir_request.url)
                     dir_list.append(path)
             found_dirs += dir_list
             depth += 1
         found_dirs = list(set(found_dirs))
 
-        print("Finished scanning directories. Dirlist is %s" % str(found_dirs))
+        if DEBUG:
+            print("Finished scanning directories. Dirlist is %s" % str(found_dirs))
 
         brute_futures = []
         for found_dir in found_dirs:
             brute_futures += self.brute_section(
                 complete_filelist, method, follow_redirects, prefix=found_dir)
+
+        found_files = []
         for brute_future in brute_futures:
             brute_result = brute_future.result()
             if brute_result.ok:
-                print("Hit for %s" % brute_result.url)
+                if DEBUG:
+                    print("Hit for %s" % brute_result.url)
+
+                path = brute_result.url.partition(self.domain)[2]
+                found_files.append(path)
+
+        self.results = found_dirs + found_files
 
     def check(self, component, method, follow_redirects=False):
         #TODO don't follow redirects
 
         headers = requests.utils.default_headers()
         user_agent = random.choice(self.user_agents if self.user_agents else [DEFAULT_USER_AGENT])
-        print("User agent is %s" % user_agent)
-        print("Path is %s" % component)
+        if DEBUG:
+            print("User agent is %s" % user_agent)
+            print("Path is %s" % component)
 
         ua_header = {"User-Agent": user_agent}
         headers.update(ua_header)
@@ -170,12 +194,16 @@ class Bronson(object):
 
         return get_result
 
-    def get_results(self, output_format="human"):
-        raise NotImplementedError
+    def get_results(self, output_format):
+        if output_format in ["json", "csv"]:
+            raise NotImplementedError
 
-def main(config):
+        for result in self.results:
+            print("Hit: %s" % result)
 
-    d = Bronson(config["domain"], method="GET")
+def main(domain, config):
+
+    d = Bronson(domain, method="GET")
     for wordlist_type, wordlist_list in config["wordlists"].items():
         for wordlist_f in wordlist_list:
             d.wordlist.add_wordlist(wordlist_type, wordlist_f)
@@ -184,16 +212,23 @@ def main(config):
         d.add_user_agent(useragent_f)
 
     d.brute(FOLLOW_REDIRECTS, max_depth=MAX_DEPTH)
-    #d.get_results()
+    d.get_results(args.output)
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
         description='Brute force scanning for HTTP objects on a domain')
 
-    parser.add_argument("config", type=str, help="YAML config file defining attack parameters")
+    parser.add_argument("--config", type=str, help="YAML config file defining attack parameters",
+                        default="bronson.yaml")
+    parser.add_argument("--domain", type=str, help="Domain to attack", required=True)
+    parser.add_argument("--output", "-o", dest="output", action="store", default="text",
+                        choices=OUTPUT_TYPES, help="Output format")
     args = parser.parse_args()
+
     with open(args.config) as config_f:
+        # TODO allow the config file to override a defaults file
+        # TODO allow the command line arguments serve as a way of overriding config
         config = yaml.load(config_f)
 
-    main(config)
+    main(args.domain, config)

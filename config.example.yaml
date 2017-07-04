@@ -1,6 +1,4 @@
 ---
-# The domain to attack
-domain: nosmo.me
 wordlists:
   # Each key takes a list of filenames
   path:

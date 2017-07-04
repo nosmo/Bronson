@@ -40,7 +40,7 @@ class Wordlist(object):
 
         with open(filename) as wordlist_f:
 
-            self.wordlist[list_type] += [ i.strip() for i in wordlist_f.read().split("\n") if i ]
+            self.wordlist[list_type] += [ i.strip() for i in wordlist_f.read().split("\n") if i.strip() ]
             self.wordlist[list_type] = list(set(self.wordlist[list_type]))
 
     def permute_filenames(self):
