@@ -1,0 +1,21 @@
+---
+# The domain to attack
+domain: nosmo.me
+wordlists:
+  # Each key takes a list of filenames
+  path:
+    # Directory list
+    - lists/path.txt
+  extension:
+    # File extension list
+    - lists/filetype.txt
+  filename:
+    # Filename list - will be permuted with extension
+    - lists/filename.txt
+user_agents:
+  # List of user agents to attempt to use - not required, a default
+  # will be used
+  - lists/useragents.txt
+
+#TODO not implemented in config - max number of concurrent sessions
+max_concurrent: 10

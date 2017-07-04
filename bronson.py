@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+
+import argparse
 import copy
 import random
 
@@ -19,17 +21,6 @@ MAX_CONCURRENT = 10
 # Session makes use of auth (etc) easier, but also makes detection
 # easier if cookies are set
 USE_SESSION = True
-
-CONFIG_DICT = {
-    "domain": "nosmo.me",
-    "wordlists": {
-        "path": ["lists/path.txt"],
-        "extension": ["lists/filetype.txt"],
-        "filename": ["lists/filename.txt"]
-    },
-    "user_agents": ["lists/useragents.txt"],
-    "max_concurrent": MAX_CONCURRENT,
-}
 
 
 class Bronson(object):
@@ -196,4 +187,13 @@ def main(config):
     #d.get_results()
 
 if __name__ == "__main__":
-    main(CONFIG_DICT)
+
+    parser = argparse.ArgumentParser(
+        description='Brute force scanning for HTTP objects on a domain')
+
+    parser.add_argument("config", type=str, help="YAML config file defining attack parameters")
+    args = parser.parse_args()
+    with open(args.config) as config_f:
+        config = yaml.load(config_f)
+
+    main(config)
