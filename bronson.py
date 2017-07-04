@@ -23,16 +23,16 @@ USE_SESSION = True
 CONFIG_DICT = {
     "domain": "nosmo.me",
     "wordlists": {
-        "path": ["path.txt"],
-        "extension": ["filetype.txt"],
-        "filename": ["filename.txt"]
+        "path": ["lists/path.txt"],
+        "extension": ["lists/filetype.txt"],
+        "filename": ["lists/filename.txt"]
     },
-    "user_agents": ["useragents.txt"],
+    "user_agents": ["lists/useragents.txt"],
     "max_concurrent": MAX_CONCURRENT,
 }
 
 
-class Durrduster(object):
+class Bronson(object):
 
     def __init__(self, domain, method, protocol="https"):
 
@@ -43,7 +43,8 @@ class Durrduster(object):
         self.user_agents = []
 
         if USE_SESSION:
-            self.session = FuturesSession(executor=ThreadPoolExecutor(max_workers=MAX_CONCURRENT))
+            self.session = FuturesSession(
+                executor=ThreadPoolExecutor(max_workers=MAX_CONCURRENT))
             self.methods = make_session_methods(self.session)
         else:
             self.methods = HTTP_METHODS
@@ -61,6 +62,9 @@ class Durrduster(object):
                     self.user_agents.append(useragent)
 
     def brute_section(self, brute_iterator, method, follow_redirects, prefix=None):
+        # TODO deduplicate between this function and brute_dirs -
+        # there's so much overlap and this is only still here because
+        # I'm so so lazy.
         brute_futures = []
 
         # Brute_iterator could be a list of paths, filenames, mutated paths
@@ -69,11 +73,7 @@ class Durrduster(object):
             if prefix and prefix != "/":
                 request_path = "%s/%s" % (prefix, component)
 
-            #print("request path is %s" % request_path)
             future_obj = self.check(request_path, method, follow_redirects)
-            #if request_obj.ok:
-            #    print("Hit for %s" % request_obj.url)
-            #    print(request_obj.status_code)
             brute_futures.append(future_obj)
         return brute_futures
 
@@ -85,17 +85,24 @@ class Durrduster(object):
                 check_path = "/".join([prefix, check_dir])
 
             request_obj = self.check(check_path, method, follow_redirects)
-            #if request_obj.ok:
-            #    print("Hit for %s" % request_obj.url)
-            #    print(request_obj.status_code)
-            #    dir_hits.append(check_path)
             dir_futures.append(request_obj)
         return dir_futures
 
 
     def brute(self, follow_redirects, max_depth, method="GET"):
+        """Run a full attack on the domain with which we have been
+        configured.
 
-        """TODO option to make max_depth be obeyed relative to the last
+         Brute force a directory and file structure based on the
+         wordlists with which we have been configured.
+
+        follow_redirects: A boolean to indicate whether we should follow redirects
+        max_depth: an int. how many layers of directory from the root should be scanned
+        method: the HTTP method to use when scanning
+        """
+
+        """TODO option to make max_depth be obeyed relative to the
+        last
         successful dir?
 
         ie: with max_depth 3, example.com/fail/fail/fail fails out but
@@ -177,7 +184,7 @@ class Durrduster(object):
 
 def main(config):
 
-    d = Durrduster(config["domain"], method="GET")
+    d = Bronson(config["domain"], method="GET")
     for wordlist_type, wordlist_list in config["wordlists"].items():
         for wordlist_f in wordlist_list:
             d.wordlist.add_wordlist(wordlist_type, wordlist_f)
