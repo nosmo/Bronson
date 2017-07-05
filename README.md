@@ -21,7 +21,7 @@ A Bronson attack is started by running the command like so:
 
 Configuration
 --------
-> For Bronson to be useful, configure it with more extensive wordlists than the ones provided.
+> ⚠️ For Bronson to be useful, configure it with more extensive wordlists than the ones provided. ⚠️
 
 Bronson supports configuration via a YAML file - see
 ```config.example.yaml``` for an example. This file is largely
@@ -33,12 +33,14 @@ list of ```["test", "lol", "derp"]``` and an extension list of
 ```["txt", "html"]``` will result in a file list of
 ```["test.txt", "test.html", "lol.txt", "lol.html", "derp.txt", "derp.html"]```.
 
+#### User agents
 Multiple user agents can be configured via the ```user_agents```
 stanza which allows a list of agents. A random user agent will be
 chosen on a per-request basis by default. If no user agents are
 configured, a very obvious user agent will be used as an alternative.
 
-In the same fashion, proxies can be configued to be randomly used - if
+#### Proxies
+In the same fashion as user agents, proxies can be configued to be randomly used - if
 multiple proxies are included in the ```proxies``` key in the
 configuration file, one proxy will be randomly selected per
 request. If this section is empty or absent, no proxy will be
@@ -46,6 +48,7 @@ used. Ensure that if using proxies that your selection of proxies
 corresponds to that of the site you are scanning - if no appropriate
 proxy is available, the proxy will simply be bypassed.
 
+#### HTTP methods
 By default the HTTP method used for file discovery is a GET. A HEAD
 can be also used, or the special method "mix" may be used for the
 ```discovery_method``` config option which will randomly choose
