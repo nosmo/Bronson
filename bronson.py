@@ -63,7 +63,7 @@ class Bronson(object):
 
         print("Proxies configured %s" % str(self.proxies))
 
-    def brute_section(self, brute_iterator, method, follow_redirects, prefix=None):
+    def brute_section(self, brute_iterator, follow_redirects, prefix=None):
         # TODO deduplicate between this function and brute_dirs -
         # there's so much overlap and this is only still here because
         # I'm so so lazy.
@@ -78,11 +78,11 @@ class Bronson(object):
                     format_string = "%s/%s"
                 request_path = format_string % (prefix, component)
 
-            future_obj = self.check(request_path, method, follow_redirects)
+            future_obj = self.check(request_path, follow_redirects)
             brute_futures.append(future_obj)
         return brute_futures
 
-    def brute_dirs(self, dirlist, method, follow_redirects, prefix=None):
+    def brute_dirs(self, dirlist, follow_redirects, prefix=None):
         dir_futures = []
         for check_dir in dirlist:
             check_path = check_dir
@@ -92,7 +92,7 @@ class Bronson(object):
                     format_string = "%s/%s"
                 check_path = format_string % (prefix, component)
 
-            request_obj = self.check(check_path, method, follow_redirects)
+            request_obj = self.check(check_path, follow_redirects)
             dir_futures.append(request_obj)
         return dir_futures
 
@@ -122,7 +122,7 @@ class Bronson(object):
         complete_filelist = self.wordlist.permute_filenames()
 
         dir_futures = self.brute_dirs(
-            self.wordlist.path() + [""], self.method, follow_redirects
+            self.wordlist.path() + [""], follow_redirects
         )
 
         dir_list = []
@@ -159,7 +159,7 @@ class Bronson(object):
         brute_futures = []
         for found_dir in found_dirs:
             brute_futures += self.brute_section(
-                complete_filelist, self.method, follow_redirects, prefix=found_dir)
+                complete_filelist, follow_redirects, prefix=found_dir)
 
         found_files = []
         for brute_future in brute_futures:
@@ -174,7 +174,7 @@ class Bronson(object):
         self.found_dirs = found_dirs
         self.found_files = found_files
 
-    def check(self, component, method, follow_redirects=False):
+    def check(self, component, follow_redirects=False):
         #TODO don't follow redirects
 
         headers = requests.utils.default_headers()
