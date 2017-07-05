@@ -11,17 +11,12 @@ from requests_futures.sessions import FuturesSession
 import requests
 import yaml
 
-from const import OUTPUT_TYPES
+from const import OUTPUT_TYPES, DEFAULT_USER_AGENT
 from util import HTTP_METHODS, make_session_methods
 from wordlist import Wordlist
 
 FOLLOW_REDIRECTS = False
-DEFAULT_USER_AGENT = "Mozilla/5.0 (Macintosh; MacOS 7.5.1) You should probably block this UA"
 MAX_CONCURRENT = 10
-
-# Session makes use of auth (etc) easier, but also makes detection
-# easier if cookies are set
-USE_SESSION = True
 
 # TODO move this to a custom logger
 DEBUG = False
@@ -37,12 +32,10 @@ class Bronson(object):
         self.wordlist = Wordlist()
         self.user_agents = []
 
-        if USE_SESSION:
-            self.session = FuturesSession(
-                executor=ThreadPoolExecutor(max_workers=MAX_CONCURRENT))
-            self.methods = make_session_methods(self.session)
-        else:
-            self.methods = HTTP_METHODS
+        #TODO add function to scrub session data
+        self.session = FuturesSession(
+            executor=ThreadPoolExecutor(max_workers=MAX_CONCURRENT))
+        self.methods = make_session_methods(self.session)
 
         self.results = []
         self.proxies = {"http": [], "https": []}
