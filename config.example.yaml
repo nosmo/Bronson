@@ -17,3 +17,16 @@ user_agents:
 
 #TODO not implemented in config - max number of concurrent sessions
 max_concurrent: 10
+
+# The maximum number of directories into which to descend - ie:
+# discover at most site.com/lol/butts/derp/
+max_depth: 3
+
+proxies:
+  myproxy:
+    # "any" implies both http and https
+    type: any
+    connect: 127.0.0.1:8080
+  myotherhttpsonlyproxy:
+    type: https
+    connect: 10.0.0.1:8089

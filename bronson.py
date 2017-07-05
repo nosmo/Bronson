@@ -15,7 +15,6 @@ from util import HTTP_METHODS, make_session_methods
 from wordlist import Wordlist
 
 FOLLOW_REDIRECTS = False
-MAX_DEPTH = 3
 DEFAULT_USER_AGENT = "Mozilla/5.0 (Macintosh; MacOS 7.5.1) You should probably block this UA"
 MAX_CONCURRENT = 10
 
@@ -45,6 +44,7 @@ class Bronson(object):
             self.methods = HTTP_METHODS
 
         self.results = []
+        self.proxies = {"http": [], "https": []}
 
     def add_user_agent(self, useragent_path):
         """add a file full of user agents to use
@@ -58,6 +58,16 @@ class Bronson(object):
                 useragent = useragent.strip()
                 if useragent:
                     self.user_agents.append(useragent)
+
+    def load_proxy_config(self, proxy_dict):
+        for proxyname, proxydetails in proxy_dict.items():
+            if proxydetails["type"] in self.proxies.keys():
+                self.proxies[proxydetails["type"]].append(proxydetails["connect"])
+            elif proxydetails["type"] == "any":
+                self.proxies["http"].append(proxydetails["connect"])
+                self.proxies["https"].append(proxydetails["connect"])
+
+        print("Proxies configured %s" % str(self.proxies))
 
     def brute_section(self, brute_iterator, method, follow_redirects, prefix=None):
         # TODO deduplicate between this function and brute_dirs -
@@ -174,10 +184,20 @@ class Bronson(object):
         #TODO don't follow redirects
 
         headers = requests.utils.default_headers()
+
+        # Select a random user agent or use the default if not configured
         user_agent = random.choice(self.user_agents if self.user_agents else [DEFAULT_USER_AGENT])
+
+        # Select a random proxy if configured with a proxy list
+        proxy = {self.protocol: None}
+        if [ i for i in self.proxies.values() if i ]:
+            proxy = {self.protocol: "%s://%s" % (self.protocol,
+                                                 random.choice(self.proxies[self.protocol]))}
+
         if DEBUG:
             print("User agent is %s" % user_agent)
             print("Path is %s" % component)
+            print("Proxy is %s" % proxy[self.protocol])
 
         ua_header = {"User-Agent": user_agent}
         headers.update(ua_header)
@@ -188,6 +208,7 @@ class Bronson(object):
                 domain=self.domain,
                 component=component,
             ),
+            proxies=proxy,
             headers=headers,
             allow_redirects=follow_redirects
         )
@@ -211,7 +232,10 @@ def main(domain, config):
     for useragent_f in config["user_agents"]:
         d.add_user_agent(useragent_f)
 
-    d.brute(FOLLOW_REDIRECTS, max_depth=MAX_DEPTH)
+    if "proxies" in config:
+        d.load_proxy_config(config["proxies"])
+
+    d.brute(FOLLOW_REDIRECTS, max_depth=config["max_depth"])
     d.get_results(args.output)
 
 if __name__ == "__main__":
