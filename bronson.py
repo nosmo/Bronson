@@ -64,9 +64,6 @@ class Bronson(object):
         print("Proxies configured %s" % str(self.proxies))
 
     def brute_section(self, brute_iterator, follow_redirects, prefix=None):
-        # TODO deduplicate between this function and brute_dirs -
-        # there's so much overlap and this is only still here because
-        # I'm so so lazy.
         brute_futures = []
 
         # Brute_iterator could be a list of paths, filenames, mutated paths
@@ -81,21 +78,6 @@ class Bronson(object):
             future_obj = self.check(request_path, follow_redirects)
             brute_futures.append(future_obj)
         return brute_futures
-
-    def brute_dirs(self, dirlist, follow_redirects, prefix=None):
-        dir_futures = []
-        for check_dir in dirlist:
-            check_path = check_dir
-            if prefix and prefix != "/":
-                format_string = "%s%s"
-                if prefix.startswith("/"):
-                    format_string = "%s/%s"
-                check_path = format_string % (prefix, component)
-
-            request_obj = self.check(check_path, follow_redirects)
-            dir_futures.append(request_obj)
-        return dir_futures
-
 
     def brute(self, follow_redirects, max_depth):
         """Run a full attack on the domain with which we have been
@@ -121,7 +103,7 @@ class Bronson(object):
 
         complete_filelist = self.wordlist.permute_filenames()
 
-        dir_futures = self.brute_dirs(
+        dir_futures = self.brute_section(
             self.wordlist.path() + [""], follow_redirects
         )
 
@@ -139,7 +121,7 @@ class Bronson(object):
 
         dir_list = []
         while dir_list and depth != max_depth:
-            dir_futures = self.brute_dirs(
+            dir_futures = self.brute_section(
                 self.wordlist.path(), self.method, follow_redirects, prefix=prefix_dir
             )
             for dir_future in dir_futures:
