@@ -45,3 +45,23 @@ request. If this section is empty or absent, no proxy will be
 used. Ensure that if using proxies that your selection of proxies
 corresponds to that of the site you are scanning - if no appropriate
 proxy is available, the proxy will simply be bypassed.
+
+By default the HTTP method used for file discovery is a GET. A HEAD
+can be also used, or the special method "mix" may be used for the
+```discovery_method``` config option which will randomly choose
+between the two. POST is also available for use but will result in
+strange results in most cases.
+
+Output
+--------
+Currently JSON and plaintext are supported for output (via the
+```--output``` command line switch), with plaintext being the default.
+
+Dependencies
+-------
+Bronson relies on ```requests```, ```requests-futures``` and other
+libraries. The dependencies can be installed in a virtualenv by
+running ```make virtualenv_run``` and the virtualenv can then be
+activated by running ```source virtualenv_run/bin/activate```.
+
+Bronson requires python3.

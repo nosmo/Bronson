@@ -22,11 +22,15 @@ max_concurrent: 10
 # discover at most site.com/lol/butts/derp/
 max_depth: 3
 
-proxies:
-  myproxy:
-    # "any" implies both http and https
-    type: any
-    connect: 127.0.0.1:8080
-  myotherhttpsonlyproxy:
-    type: https
-    connect: 10.0.0.1:8089
+# Method with which to discover files - GET, HEAD or "mix". If mix is
+# used, a GET or a HEAD will be randomly chosen upon each query.
+discovery_method: mix
+
+#proxies:
+#  myproxy:
+#    # "any" implies both http and https
+#    type: any
+#    connect: 127.0.0.1:8080
+#  myotherhttpsonlyproxy:
+#    type: https
+#    connect: 10.0.0.1:8089

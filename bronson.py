@@ -3,6 +3,7 @@
 
 import argparse
 import copy
+import json
 import random
 
 from concurrent.futures import ThreadPoolExecutor
@@ -103,7 +104,7 @@ class Bronson(object):
         return dir_futures
 
 
-    def brute(self, follow_redirects, max_depth, method="GET"):
+    def brute(self, follow_redirects, max_depth):
         """Run a full attack on the domain with which we have been
         configured.
 
@@ -112,7 +113,6 @@ class Bronson(object):
 
         follow_redirects: A boolean to indicate whether we should follow redirects
         max_depth: an int. how many layers of directory from the root should be scanned
-        method: the HTTP method to use when scanning
         """
 
         """TODO option to make max_depth be obeyed relative to the
@@ -129,7 +129,7 @@ class Bronson(object):
         complete_filelist = self.wordlist.permute_filenames()
 
         dir_futures = self.brute_dirs(
-            self.wordlist.path() + [""], method, follow_redirects
+            self.wordlist.path() + [""], self.method, follow_redirects
         )
 
         dir_list = []
@@ -147,7 +147,7 @@ class Bronson(object):
         dir_list = []
         while dir_list and depth != max_depth:
             dir_futures = self.brute_dirs(
-                self.wordlist.path(), method, follow_redirects, prefix=prefix_dir
+                self.wordlist.path(), self.method, follow_redirects, prefix=prefix_dir
             )
             for dir_future in dir_futures:
                 dir_request = dir_future.result()
@@ -166,7 +166,7 @@ class Bronson(object):
         brute_futures = []
         for found_dir in found_dirs:
             brute_futures += self.brute_section(
-                complete_filelist, method, follow_redirects, prefix=found_dir)
+                complete_filelist, self.method, follow_redirects, prefix=found_dir)
 
         found_files = []
         for brute_future in brute_futures:
@@ -178,7 +178,8 @@ class Bronson(object):
                 path = brute_result.url.partition(self.domain)[2]
                 found_files.append(path)
 
-        self.results = found_dirs + found_files
+        self.found_dirs = found_dirs
+        self.found_files = found_files
 
     def check(self, component, method, follow_redirects=False):
         #TODO don't follow redirects
@@ -193,6 +194,10 @@ class Bronson(object):
         if [ i for i in self.proxies.values() if i ]:
             proxy = {self.protocol: "%s://%s" % (self.protocol,
                                                  random.choice(self.proxies[self.protocol]))}
+
+        method = self.method
+        if self.method == "mix":
+            method = random.choice(["GET", "HEAD"])
 
         if DEBUG:
             print("User agent is %s" % user_agent)
@@ -216,15 +221,23 @@ class Bronson(object):
         return get_result
 
     def get_results(self, output_format):
-        if output_format in ["json", "csv"]:
+        if output_format in ["csv"]:
             raise NotImplementedError
 
-        for result in self.results:
-            print("Hit: %s" % result)
+        if output_format == "text":
+            for result in self.found_dirs:
+                print("Dir: %s" % result)
+            for result in self.found_files:
+                print("File: %s" % result)
+        elif output_format == "json":
+            print(
+                json.dumps({"dirs": self.found_dirs,
+                            "files": self.found_files})
+            )
 
 def main(domain, config):
 
-    d = Bronson(domain, method="GET")
+    d = Bronson(domain, method=config["discovery_method"])
     for wordlist_type, wordlist_list in config["wordlists"].items():
         for wordlist_f in wordlist_list:
             d.wordlist.add_wordlist(wordlist_type, wordlist_f)
