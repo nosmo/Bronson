@@ -64,6 +64,14 @@ If a path is to be skipped (sensitive path, very large file etc),
 config.yaml accepts a list of files to ignore under the
 ```blacklist``` heading. Currently only full paths are supported.
 
+#### HTTP authentication
+HTTP authentication headers can be set as a key:value pair via the
+```--auth``` command line argument.
+
+#### Arbitrary headers
+Similar to HTTP auth and cookies, arbitrary headers can be set via the
+```--header``` switch as key:value arguments.
+
 Output
 --------
 Currently JSON and plaintext are supported for output (via the

@@ -44,6 +44,12 @@ class Bronson(object):
         # Used only for tracking cookies - will be removed in future
         self.cookies = {}
 
+    def set_auth(self, auth_tuple):
+        self.session.auth = auth_tuple
+
+    def add_header(self, header_tuple):
+        self.session.headers.update({header_tuple[0]: header_tuple[1]})
+
     def add_user_agent(self, useragent_path):
         """add a file full of user agents to use
 
@@ -58,6 +64,10 @@ class Bronson(object):
                     self.user_agents.append(useragent)
 
     def add_proxy_config(self, proxy_dict):
+
+        # We don't use proxy setting via requests.Session.proxies
+        # because we want to have the chance to randomise it if
+        # needed.
         for proxyname, proxydetails in proxy_dict.items():
             if proxydetails["type"] in self.proxies.keys():
                 self.proxies[proxydetails["type"]].append(proxydetails["connect"])
@@ -200,7 +210,7 @@ class Bronson(object):
             print("Proxy is %s" % proxy[self.protocol])
 
         ua_header = {"User-Agent": user_agent}
-        headers.update(ua_header)
+        self.session.headers.update(ua_header)
 
         get_result = self.methods[method](
             "{protocol}://{domain}/{component}".format(
@@ -249,6 +259,12 @@ def main(args, config):
     for cookie in args.cookies:
         d.add_cookie(cookie.split(":"))
 
+    for header in args.headers:
+        d.add_header(header.split(":"))
+
+    if args.auth:
+        d.set_auth(tuple(args.auth.split(":")))
+
     d.brute(FOLLOW_REDIRECTS, max_depth=config["max_depth"])
     d.get_results(args.output)
 
@@ -264,6 +280,10 @@ if __name__ == "__main__":
                         choices=["http", "https"])
     parser.add_argument("--output", "-o", dest="output", action="store", default="text",
                         choices=OUTPUT_TYPES, help="Output format")
+    parser.add_argument("--auth", "-a", dest="auth", action="store",
+                        help="A key:value HTTP authentication value", default="")
+    parser.add_argument("--header", dest="headers", action="store", nargs="+",
+                        help="Set arbitrary key:value headers", default=[])
     parser.add_argument("--cookie", "-c", dest="cookies", action="store", nargs="+",
                         help="A key:value cookie.", default=[])
 
