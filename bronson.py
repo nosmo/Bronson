@@ -26,6 +26,7 @@ class Bronson(object):
 
     def __init__(self, domain, method, protocol="https"):
 
+        #lol too many attributes
         self.domain = domain
         self.method = method
         self.protocol = protocol
@@ -39,6 +40,9 @@ class Bronson(object):
 
         self.results = []
         self.proxies = {"http": [], "https": []}
+        self.blacklist = []
+        # Used only for tracking cookies - will be removed in future
+        self.cookies = {}
 
     def add_user_agent(self, useragent_path):
         """add a file full of user agents to use
@@ -53,7 +57,7 @@ class Bronson(object):
                 if useragent:
                     self.user_agents.append(useragent)
 
-    def load_proxy_config(self, proxy_dict):
+    def add_proxy_config(self, proxy_dict):
         for proxyname, proxydetails in proxy_dict.items():
             if proxydetails["type"] in self.proxies.keys():
                 self.proxies[proxydetails["type"]].append(proxydetails["connect"])
@@ -63,17 +67,33 @@ class Bronson(object):
 
         print("Proxies configured %s" % str(self.proxies))
 
+    def add_cookie(self, cookie_tuple):
+        """Set a cookie when scanning.
+
+        cookie_tuple: a tuple of the format (key, value)
+        """
+        self.cookies[cookie_tuple[0]] = cookie_tuple[1]
+        self.session.cookies.set(cookie_tuple[0], cookie_tuple[1])
+
+    def add_blacklist(self, blacklist):
+        self.blacklist = blacklist
+
     def brute_section(self, brute_iterator, follow_redirects, prefix=None):
         brute_futures = []
 
         # Brute_iterator could be a list of paths, filenames, mutated paths
         for component in brute_iterator:
             request_path = component
-            if prefix and prefix != "/":
+            if prefix:
                 format_string = "%s%s"
-                if prefix.startswith("/"):
+                if not prefix.endswith("/") and component != "/":
                     format_string = "%s/%s"
                 request_path = format_string % (prefix, component)
+
+                if request_path in self.blacklist:
+                    if DEBUG:
+                        print("Skipping %s due to blacklist" % request_path)
+                    continue
 
             future_obj = self.check(request_path, follow_redirects)
             brute_futures.append(future_obj)
@@ -210,9 +230,9 @@ class Bronson(object):
                             "files": self.found_files})
             )
 
-def main(domain, config):
+def main(args, config):
 
-    d = Bronson(domain, method=config["discovery_method"])
+    d = Bronson(args.domain, method=config["discovery_method"], protocol=args.protocol)
     for wordlist_type, wordlist_list in config["wordlists"].items():
         for wordlist_f in wordlist_list:
             d.wordlist.add_wordlist(wordlist_type, wordlist_f)
@@ -220,8 +240,14 @@ def main(domain, config):
     for useragent_f in config["user_agents"]:
         d.add_user_agent(useragent_f)
 
-    if "proxies" in config:
-        d.load_proxy_config(config["proxies"])
+    if "proxies" in config and config["proxies"]:
+        d.add_proxy_config(config["proxies"])
+
+    if "blacklist" in config and config["blacklist"]:
+        d.add_blacklist(config["blacklist"])
+
+    for cookie in args.cookies:
+        d.add_cookie(cookie.split(":"))
 
     d.brute(FOLLOW_REDIRECTS, max_depth=config["max_depth"])
     d.get_results(args.output)
@@ -234,8 +260,13 @@ if __name__ == "__main__":
     parser.add_argument("--config", type=str, help="YAML config file defining attack parameters",
                         default="bronson.yaml")
     parser.add_argument("--domain", type=str, help="Domain to attack", required=True)
+    parser.add_argument("--protocol", type=str, help="HTTP protocol to speak", default="https",
+                        choices=["http", "https"])
     parser.add_argument("--output", "-o", dest="output", action="store", default="text",
                         choices=OUTPUT_TYPES, help="Output format")
+    parser.add_argument("--cookie", "-c", dest="cookies", action="store", nargs="+",
+                        help="A key:value cookie.", default=[])
+
     args = parser.parse_args()
 
     with open(args.config) as config_f:
@@ -243,4 +274,4 @@ if __name__ == "__main__":
         # TODO allow the command line arguments serve as a way of overriding config
         config = yaml.load(config_f)
 
-    main(args.domain, config)
+    main(args, config)

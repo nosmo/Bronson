@@ -26,6 +26,10 @@ max_depth: 3
 # used, a GET or a HEAD will be randomly chosen upon each query.
 discovery_method: mix
 
+# A list of objects not to get - can be any full path relative to the root
+blacklist:
+  - /index.html
+
 #proxies:
 #  myproxy:
 #    # "any" implies both http and https

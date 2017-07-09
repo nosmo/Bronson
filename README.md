@@ -55,6 +55,15 @@ can be also used, or the special method "mix" may be used for the
 between the two. POST is also available for use but will result in
 strange results in most cases.
 
+#### Cookies
+Cookes can be passed on a per-attack basis via the ```--cookie```
+switch. This can be provided multiple times to add multiple cookies.
+
+#### Blacklist
+If a path is to be skipped (sensitive path, very large file etc),
+config.yaml accepts a list of files to ignore under the
+```blacklist``` heading. Currently only full paths are supported.
+
 Output
 --------
 Currently JSON and plaintext are supported for output (via the
