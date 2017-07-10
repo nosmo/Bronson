@@ -72,6 +72,11 @@ HTTP authentication headers can be set as a key:value pair via the
 Similar to HTTP auth and cookies, arbitrary headers can be set via the
 ```--header``` switch as key:value arguments.
 
+To scan a host on a paticular IP address that doesn't correspond to a
+domain (for example a host behind a CDN or anti-DDoS system), use the
+IP address in the ```--domain``` switch and set the ```Host``` header
+to the domain using ```--header```.
+
 Output
 --------
 Currently JSON and plaintext are supported for output (via the
