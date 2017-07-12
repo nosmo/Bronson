@@ -39,6 +39,14 @@ stanza which allows a list of agents. A random user agent will be
 chosen on a per-request basis by default. If no user agents are
 configured, a very obvious user agent will be used as an alternative.
 
+In order to evade some basic WAF detection methods, the "jitter"
+factor with which user agents are selected can be customised. The
+```user_agent_jitter``` configuration option controls how often a new
+user agent will be selected - a jitter factor of 3 will change UA
+every 3 requests. The speed at which concurrent requests are made
+means that it cannot be guaranteed that the requests will be strongly
+ordered, but the requests will be limited in their spread.
+
 #### Proxies
 In the same fashion as user agents, proxies can be configued to be randomly used - if
 multiple proxies are included in the ```proxies``` key in the

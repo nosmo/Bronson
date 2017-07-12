@@ -22,16 +22,40 @@ MAX_CONCURRENT = 10
 DEBUG = False
 
 
+class RandomSelector(object):
+
+    def __init__(self, jitter_factor, itertype=list):
+        self.jitter_factor = jitter_factor
+        self.position = 0
+        self.calls = 0
+        self.random_objects = itertype()
+
+    def add_object(self, thing):
+        self.random_objects.append(thing)
+
+    def get_object(self):
+        if self.jitter_factor:
+            if self.calls < self.jitter_factor:
+                self.calls += 1
+                return self.random_objects[self.position]
+            else:
+                self.calls = 1
+                self.position = int(random.random() * len(self.random_objects))
+                return self.random_objects[self.position]
+        else:
+            return random.choice(self.random_objects)
+
+
 class Bronson(object):
 
-    def __init__(self, domain, method, protocol="https"):
+    def __init__(self, domain, method, ua_jitter=0, protocol="https"):
 
         #lol too many attributes
         self.domain = domain
         self.method = method
         self.protocol = protocol
         self.wordlist = Wordlist()
-        self.user_agents = []
+        self.user_agents = RandomSelector(ua_jitter)
 
         #TODO add function to scrub session data
         self.session = FuturesSession(
@@ -61,7 +85,7 @@ class Bronson(object):
             for useragent in wordlist_f.read().split("\n"):
                 useragent = useragent.strip()
                 if useragent:
-                    self.user_agents.append(useragent)
+                    self.user_agents.add_object(useragent)
 
     def add_proxy_config(self, proxy_dict):
 
@@ -189,10 +213,8 @@ class Bronson(object):
     def check(self, component, follow_redirects=False):
         #TODO don't follow redirects
 
-        headers = requests.utils.default_headers()
-
         # Select a random user agent or use the default if not configured
-        user_agent = random.choice(self.user_agents if self.user_agents else [DEFAULT_USER_AGENT])
+        user_agent = self.user_agents.get_object()
 
         # Select a random proxy if configured with a proxy list
         proxy = {self.protocol: None}
@@ -219,7 +241,6 @@ class Bronson(object):
                 component=component,
             ),
             proxies=proxy,
-            headers=headers,
             allow_redirects=follow_redirects
         )
 
@@ -242,7 +263,10 @@ class Bronson(object):
 
 def main(args, config):
 
-    d = Bronson(args.domain, method=config["discovery_method"], protocol=args.protocol)
+    ua_jitter = config["user_agent_jitter"] if "user_agent_jitter" in config else 0
+
+    d = Bronson(args.domain, method=config["discovery_method"], protocol=args.protocol,
+                ua_jitter=ua_jitter)
     for wordlist_type, wordlist_list in config["wordlists"].items():
         for wordlist_f in wordlist_list:
             d.wordlist.add_wordlist(wordlist_type, wordlist_f)

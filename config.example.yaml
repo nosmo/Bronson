@@ -15,6 +15,8 @@ user_agents:
   # will be used
   - lists/useragents.txt
 
+user_agent_jitter: 3
+
 #TODO not implemented in config - max number of concurrent sessions
 max_concurrent: 10
 
